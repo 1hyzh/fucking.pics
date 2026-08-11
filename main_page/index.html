@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>fucking.pics — private, temporary media</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #0b0b0e; color: #f5f3ee; font: 15px ui-sans-serif, system-ui, sans-serif; }
+      .shell { max-width: 1080px; margin: auto; padding: 28px; }
+      .brand { font-size: 22px; font-weight: 900; letter-spacing: -1px; }
+      .brand i, .accent { color: #dfff00; font-style: normal; }
+      nav { display: flex; align-items: center; justify-content: space-between; }
+      .hero { max-width: 750px; padding: 76px 0 52px; }
+      h1 { margin: 0; font-size: clamp(45px, 8vw, 100px); line-height: .88; letter-spacing: -.075em; text-wrap: balance; }
+      .hero p, .muted { color: #aaa8ad; line-height: 1.55; }
+      .hero p { max-width: 520px; margin-top: 28px; font-size: 18px; }
+      .grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
+      .card { padding: 25px; border: 1px solid #282830; border-radius: 16px; background: #16161c; }
+      .card h2 { margin: 0 0 6px; font-size: 20px; }
+      .tabs { display: flex; gap: 6px; margin: 18px 0; }
+      .tabs button, .button, .quiet { padding: 11px 15px; border: 0; border-radius: 9px; font-weight: 750; cursor: pointer; }
+      .tabs button, .quiet { background: #292930; color: #ddd; }
+      .tabs button.active, .button { background: #dfff00; color: #151510; }
+      .form { display: grid; gap: 11px; margin-top: 16px; }
+      input, select { width: 100%; padding: 12px; border: 1px solid #34343e; border-radius: 8px; background: #0e0e12; color: #fff; font: inherit; }
+      .upload { margin: 16px 0; padding: 25px; border: 1px dashed #555560; border-radius: 12px; text-align: center; }
+      .upload input { margin-top: 13px; }
+      .embed-toggle { display: flex; align-items: center; gap: 9px; color: #d9d9df; font-size: 14px; text-align: left; }
+      .embed-toggle input { width: auto; margin: 0; accent-color: #dfff00; }
+      .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }
+      .item { overflow: hidden; padding: 12px; border-radius: 10px; background: #202027; }
+      .item img, .item video { width: 100%; height: 120px; border-radius: 6px; object-fit: cover; }
+      .link { color: #dfff00; font-size: 12px; word-break: break-all; }
+      .adminRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 0; border-bottom: 1px solid #303038; }
+      .adminRow:last-child { border: 0; }
+      @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } .hero { padding-top: 58px; } .shell { padding: 18px; } }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <nav>
+        <div class="brand">fucking<i>.</i>pics</div>
+        <span class="muted">private / temporary / yours</span>
+      </nav>
+      <section class="hero">
+        <h1>Media that<br><span class="accent">knows when to leave.</span></h1>
+        <p>An approval-only home for pictures and clips. Share an unguessable link from the <b>actual.fucking.pics</b> subdomain, then let it disappear on your schedule.</p>
+      </section>
+      <section class="grid">
+        <div class="card" id="app"></div>
+        <aside class="card">
+          <h2>Designed to vanish</h2>
+          <p class="muted">Files use random URLs, have no public browse page, and expire anywhere from 10 minutes to one day.</p>
+          <p class="muted">Every new account remains pending until you approve it in your private dashboard.</p>
+        </aside>
+      </section>
+    </main>
+    <script>
+      const app = document.querySelector('#app');
+      const api = (url, options = {}) => fetch(url, options).then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw Error(data.error);
+        return data;
+      });
+      const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+
+      function auth() {
+        app.innerHTML = `<h2>Welcome in.</h2><p class="muted">Sign in to upload, or request access.</p><div class="tabs"><button class="active" onclick="showLogin()">Sign in</button><button onclick="showRegister()">Request access</button></div><div id="form"></div>`;
+        showLogin();
+      }
+      function showLogin() { form.innerHTML = `<form class="form" onsubmit="login(event)"><input name="email" type="email" placeholder="email" required><input name="password" type="password" placeholder="password" required><button class="button">Sign in</button></form>`; }
+      function showRegister() { form.innerHTML = `<form class="form" onsubmit="register(event)"><input name="email" type="email" placeholder="email" required><input name="password" type="password" placeholder="password (8+ characters)" minlength="8" required><button class="button">Request approval</button></form>`; }
+      async function login(event) { event.preventDefault(); try { await api('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(new FormData(event.target))) }); home(); } catch (error) { alert(error.message); } }
+      async function register(event) { event.preventDefault(); try { alert((await api('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(new FormData(event.target))) })).message); showLogin(); } catch (error) { alert(error.message); } }
+
+      async function home() {
+        const { user } = await api('/api/me');
+        if (!user) return auth();
+        app.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:start"><div><h2>Hi, ${escapeHtml(user.email)}.</h2><p class="muted">Upload a file or manage access.</p></div><button class="quiet" onclick="logout()">Log out</button></div><div class="tabs"><button class="active" id="uploadTab" onclick="showUploads()">Uploads</button>${user.admin ? '<button id="adminTab" onclick="showAdmin()">Admin dashboard</button>' : ''}</div><div id="workspace"></div>`;
+        showUploads();
+      }
+      function showUploads() {
+        uploadTab?.classList.add('active'); adminTab?.classList.remove('active');
+        workspace.innerHTML = `<div class="upload"><b>Choose an image or video</b><input id="file" type="file" accept="image/*,video/*"><div class="form"><select id="ttl"><option value="10">Delete after 10 minutes</option><option value="30">Delete after 30 minutes</option><option value="60">Delete after 1 hour</option><option value="360">Delete after 6 hours</option><option value="720">Delete after 12 hours</option><option value="1440" selected>Delete after 24 hours</option></select><label class="embed-toggle"><input id="allowEmbeds" type="checkbox" checked>Allow embeds and link previews</label><button class="button" onclick="upload()">Upload & get link</button></div></div><div id="media" class="media"></div>`;
+        media();
+      }
+      async function upload() {
+        const selected = file.files[0]; if (!selected) return alert('Choose a file first.');
+        try { const result = await api('/api/upload', { method: 'POST', headers: { 'Content-Type': selected.type, 'X-File-Name': encodeURIComponent(selected.name), 'X-TTL-Minutes': ttl.value, 'X-Allow-Embeds': String(allowEmbeds.checked) }, body: selected }); navigator.clipboard?.writeText(result.url); alert('Your temporary link was copied.'); media(); } catch (error) { alert(error.message); }
+      }
+      async function media() {
+        const { media: items } = await api('/api/media'); const base = `${location.protocol}//actual.${location.host.replace(/^actual\./, '')}`;
+        document.querySelector('#media').innerHTML = items.sort((a, b) => b.createdAt - a.createdAt).map(item => `<div class="item">${item.type.startsWith('image') ? `<img src="${base}/${item.file}?raw=1" alt="">` : `<video src="${base}/${item.file}?raw=1" controls></video>`}<p class="link">${base}/${item.file}</p><small class="muted">${item.allowEmbeds === false ? 'embeds disabled · ' : ''}expires ${new Date(item.expiresAt).toLocaleString()}</small></div>`).join('') || '<p class="muted">No uploads yet.</p>';
+      }
+      function showAdmin() { adminTab.classList.add('active'); uploadTab.classList.remove('active'); workspace.innerHTML = `<h2>Approval dashboard</h2><p class="muted">Approve an account to let that person upload temporary media.</p><div id="pending"></div>`; pending(); }
+      async function pending() { const { users } = await api('/api/pending'); document.querySelector('#pending').innerHTML = users.map(user => `<div class="adminRow"><div><strong>${escapeHtml(user.email)}</strong><br><small class="muted">Requested ${new Date(user.createdAt).toLocaleString()}</small></div><button class="button" onclick="approve('${user.id}')">Approve</button></div>`).join('') || '<p class="muted">No approval requests right now.</p>'; }
+      async function approve(id) { try { await api('/api/approve/' + id, { method: 'POST' }); pending(); } catch (error) { alert(error.message); } }
+      async function logout() { await api('/api/logout', { method: 'POST' }); auth(); }
+      home();
+    </script>
+  </body>
+</html>
