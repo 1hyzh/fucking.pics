@@ -82,19 +82,23 @@
         showUploads();
       }
       function showUploads() {
-        uploadTab?.classList.add('active'); adminTab?.classList.remove('active');
-        workspace.innerHTML = `<div class="upload"><b>Choose an image or video</b><input id="file" type="file" accept="image/*,video/*"><div class="form"><select id="ttl"><option value="10">Delete after 10 minutes</option><option value="30">Delete after 30 minutes</option><option value="60">Delete after 1 hour</option><option value="360">Delete after 6 hours</option><option value="720">Delete after 12 hours</option><option value="1440" selected>Delete after 24 hours</option></select><label class="embed-toggle"><input id="allowEmbeds" type="checkbox" checked>Allow embeds and link previews</label><button class="button" onclick="upload()">Upload & get link</button></div></div><div id="media" class="media"></div>`;
+        document.querySelector('#uploadTab')?.classList.add('active');
+        document.querySelector('#adminTab')?.classList.remove('active');
+        document.querySelector('#workspace').innerHTML = `<div class="upload"><b>Choose an image or video</b><input id="file" type="file" accept="image/*,video/*"><div class="form"><select id="ttl"><option value="10">Delete after 10 minutes</option><option value="30">Delete after 30 minutes</option><option value="60">Delete after 1 hour</option><option value="360">Delete after 6 hours</option><option value="720">Delete after 12 hours</option><option value="1440" selected>Delete after 24 hours</option></select><label class="embed-toggle"><input id="allowEmbeds" type="checkbox" checked>Allow embeds and link previews</label><button class="button" onclick="upload()">Upload & get link</button></div></div><div id="media" class="media"></div>`;
         media();
       }
       async function upload() {
-        const selected = file.files[0]; if (!selected) return alert('Choose a file first.');
-        try { const result = await api('/api/upload', { method: 'POST', headers: { 'Content-Type': selected.type, 'X-File-Name': encodeURIComponent(selected.name), 'X-TTL-Minutes': ttl.value, 'X-Allow-Embeds': String(allowEmbeds.checked) }, body: selected }); navigator.clipboard?.writeText(result.url); alert('Your temporary link was copied.'); media(); } catch (error) { alert(error.message); }
+        const selected = document.querySelector('#file').files[0];
+        if (!selected) return alert('Choose a file first.');
+        const ttl = document.querySelector('#ttl').value;
+        const allowEmbeds = document.querySelector('#allowEmbeds').checked;
+        try { const result = await api('/api/upload', { method: 'POST', headers: { 'Content-Type': selected.type, 'X-File-Name': encodeURIComponent(selected.name), 'X-TTL-Minutes': ttl, 'X-Allow-Embeds': String(allowEmbeds) }, body: selected }); navigator.clipboard?.writeText(result.url); alert('Your temporary link was copied.'); media(); } catch (error) { alert(error.message); }
       }
       async function media() {
         const { media: items } = await api('/api/media'); const base = `${location.protocol}//actual.${location.host.replace(/^actual\./, '')}`;
         document.querySelector('#media').innerHTML = items.sort((a, b) => b.createdAt - a.createdAt).map(item => `<div class="item">${item.type.startsWith('image') ? `<img src="${base}/${item.file}?raw=1" alt="">` : `<video src="${base}/${item.file}?raw=1" controls></video>`}<p class="link">${base}/${item.file}</p><small class="muted">${item.allowEmbeds === false ? 'embeds disabled · ' : ''}expires ${new Date(item.expiresAt).toLocaleString()}</small></div>`).join('') || '<p class="muted">No uploads yet.</p>';
       }
-      function showAdmin() { adminTab.classList.add('active'); uploadTab.classList.remove('active'); workspace.innerHTML = `<h2>Approval dashboard</h2><p class="muted">Approve an account to let that person upload temporary media.</p><div id="pending"></div>`; pending(); }
+      function showAdmin() { document.querySelector('#adminTab')?.classList.add('active'); document.querySelector('#uploadTab')?.classList.remove('active'); document.querySelector('#workspace').innerHTML = `<h2>Approval dashboard</h2><p class="muted">Approve an account to let that person upload temporary media.</p><div id="pending"></div>`; pending(); }
       async function pending() { const { users } = await api('/api/pending'); document.querySelector('#pending').innerHTML = users.map(user => `<div class="adminRow"><div><strong>${escapeHtml(user.email)}</strong><br><small class="muted">Requested ${new Date(user.createdAt).toLocaleString()}</small></div><button class="button" onclick="approve('${user.id}')">Approve</button></div>`).join('') || '<p class="muted">No approval requests right now.</p>'; }
       async function approve(id) { try { await api('/api/approve/' + id, { method: 'POST' }); pending(); } catch (error) { alert(error.message); } }
       async function logout() { await api('/api/logout', { method: 'POST' }); auth(); }
